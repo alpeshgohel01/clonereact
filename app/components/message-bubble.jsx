@@ -1,3 +1,4 @@
+// DOCUMENT filename="message-bubble.jsx"
 "use client"
 
 import { useState, useEffect } from "react"
@@ -6,12 +7,12 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Check, CheckCheck, Download, Play, Pause } from "lucide-react"
 
-export default function MessageBubble({ message, isOwn, showAvatar, onRead }) {
+export default function MessageBubble({ message, isOwn, showAvatar, onRead = () => {} }) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [audioPlaying, setAudioPlaying] = useState(false)
 
   useEffect(() => {
-    if (!isOwn && !message.is_read) {
+    if (!isOwn && !message.is_read && onRead) {
       const timer = setTimeout(() => {
         onRead()
       }, 1000)
@@ -27,12 +28,15 @@ export default function MessageBubble({ message, isOwn, showAvatar, onRead }) {
   const getMessageStatus = () => {
     if (!isOwn) return null
 
-    if (message.read_by && message.read_by.length > 0) {
-      return <CheckCheck className="h-3 w-3 text-emerald-500" />
-    } else if (message.delivered) {
-      return <CheckCheck className="h-3 w-3 text-gray-400" />
-    } else {
-      return <Check className="h-3 w-3 text-gray-400" />
+    switch (message.status) {
+      case "Read":
+        return <CheckCheck className="h-3 w-3 text-blue-500" />
+      case "Delivered":
+        return <CheckCheck className="h-3 w-3 text-gray-400" />
+      case "Sent":
+        return <Check className="h-3 w-3 text-gray-400" />
+      default:
+        return <Check className="h-3 w-3 text-gray-400" />
     }
   }
 
@@ -51,8 +55,8 @@ export default function MessageBubble({ message, isOwn, showAvatar, onRead }) {
               onClick={() => window.open(message.file_url, "_blank")}
             />
             {!imageLoaded && (
-              <div className="w-48 h-32 bg-gray-200 dark:bg-gray-700 rounded-lg animate-pulse flex items-center justify-center">
-                <span className="text-gray-400 dark:text-gray-500">Loading...</span>
+              <div className="w-48 h-32 bg-gray-200 rounded-lg animate-pulse flex items-center justify-center">
+                <span className="text-gray-400">Loading...</span>
               </div>
             )}
             {message.content && <p className="mt-2 text-sm">{message.content}</p>}
@@ -61,33 +65,33 @@ export default function MessageBubble({ message, isOwn, showAvatar, onRead }) {
 
       case "file":
         return (
-          <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg max-w-xs">
+          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg max-w-xs">
             <div className="flex-shrink-0">
-              <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
                 <Download className="h-5 w-5 text-white" />
               </div>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{message.file_name}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{message.file_size}</p>
+              <p className="text-xs text-gray-500">{message.file_size}</p>
             </div>
           </div>
         )
 
       case "audio":
         return (
-          <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg max-w-xs">
+          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg max-w-xs">
             <button
               onClick={() => setAudioPlaying(!audioPlaying)}
-              className="flex-shrink-0 w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center"
+              className="flex-shrink-0 w-10 h-10 bg-white rounded-full flex items-center justify-center"
             >
               {audioPlaying ? <Pause className="h-5 w-5 text-white" /> : <Play className="h-5 w-5 text-white ml-1" />}
             </button>
             <div className="flex-1">
-              <div className="w-32 h-2 bg-gray-300 dark:bg-gray-600 rounded-full">
-                <div className="w-1/3 h-2 bg-emerald-500 rounded-full"></div>
+              <div className="w-32 h-2 bg-gray-300 rounded-full">
+                <div className="w-1/3 h-2 bg-white rounded-full"></div>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{message.duration || "0:30"}</p>
+              <p className="text-xs text-gray-500 mt-1">{message.duration || "0:30"}</p>
             </div>
           </div>
         )
@@ -103,23 +107,23 @@ export default function MessageBubble({ message, isOwn, showAvatar, onRead }) {
         {showAvatar && !isOwn && (
           <Avatar className="w-8 h-8">
             <AvatarImage src={message.sender?.profile_pic || "/placeholder.svg"} />
-            <AvatarFallback className="text-xs">{message.sender?.name?.charAt(0)?.toUpperCase() || "?"}</AvatarFallback>
+            <AvatarFallback className="text-xs">
+              {message.sender?.name?.charAt(0)?.toUpperCase() || "?"}
+            </AvatarFallback>
           </Avatar>
         )}
 
         <div className={`${showAvatar && !isOwn ? "ml-2" : ""} ${showAvatar && isOwn ? "mr-2" : ""}`}>
           {showAvatar && !isOwn && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 ml-1">{message.sender?.name || "Unknown"}</p>
+            <p className="text-xs text-gray-500 mb-1 ml-1">{message.sender?.name || "Unknown"}</p>
           )}
 
-          <Card
-            className={`${isOwn ? "bg-emerald-500 text-white" : "bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600"}`}
-          >
+          <Card className={`${isOwn ? "bg-gray-200 text-black" : "bg-white border-gray-200"}`}>
             <CardContent className="p-3">
               {renderMessageContent()}
 
               <div
-                className={`flex items-center justify-end space-x-1 mt-2 ${isOwn ? "text-emerald-100" : "text-gray-400 dark:text-gray-500"}`}
+                className={`flex items-center justify-end space-x-1 mt-2 ${isOwn ? "text-black" : "text-gray-700"}`}
               >
                 <span className="text-xs">{formatTime(message.timestamp)}</span>
                 {getMessageStatus()}
@@ -130,11 +134,7 @@ export default function MessageBubble({ message, isOwn, showAvatar, onRead }) {
           {message.reactions && message.reactions.length > 0 && (
             <div className="flex space-x-1 mt-1">
               {message.reactions.map((reaction, index) => (
-                <Badge
-                  key={index}
-                  variant="secondary"
-                  className="text-xs bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200"
-                >
+                <Badge key={index} variant="secondary" className="text-xs">
                   {reaction.emoji} {reaction.count}
                 </Badge>
               ))}

@@ -3,7 +3,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useAuth } from "../contexts/auth-context"
 
-// FIX: Use the specific IP address and port for the API base URL
 const API_BASE = `http://192.168.17.136:8000`
 
 export function useUsers() {
@@ -12,7 +11,6 @@ export function useUsers() {
   return useQuery({
     queryKey: ["users"],
     queryFn: async () => {
-      // USE YOUR DJANGO API: POST http://192.168.17.136:8000/user-list/
       const response = await fetch(`${API_BASE}/user-list/`, {
         method: "POST",
         headers: {
@@ -37,7 +35,7 @@ export function useUsers() {
       }
     },
     enabled: !!accessToken && !!user && !!user.id,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 30000,
   })
 }
 
@@ -47,7 +45,6 @@ export function useOnlineUsers() {
   return useQuery({
     queryKey: ["users", "online"],
     queryFn: async () => {
-      // USE YOUR DJANGO API: POST http://192.168.17.136:8000/user-list/
       const response = await fetch(`${API_BASE}/user-list/`, {
         method: "POST",
         headers: {
@@ -66,26 +63,103 @@ export function useOnlineUsers() {
       const data = await response.json()
 
       if (data.status) {
-        // Filter online users or return all users for now
         return data.data.filter((user) => user.is_online !== false)
       } else {
         throw new Error(data.message || "Failed to fetch online users")
       }
     },
     enabled: !!accessToken && !!user && !!user.id,
-    refetchInterval: 10000, // Refetch every 10 seconds
+    refetchInterval: 10000,
   })
 }
 
-// Mock functions for chat functionality - you'll need to implement these APIs in Django
+export function useAddContact() {
+  const { accessToken, user } = useAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ mobile_no, name }) => {
+      const response = await fetch(`${API_BASE}/user-add-contact/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          mobile_no,
+          name,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to add contact")
+      }
+
+      const data = await response.json()
+
+      if (data.status) {
+        return data.data
+      } else {
+        throw new Error(data.message || "Failed to add contact")
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] })
+    },
+    onError: (error) => {
+      console.error("Error adding contact:", error.message)
+    },
+  })
+}
+
+export function useUpdateContactStatus() {
+  const { accessToken, user } = useAuth()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ contactId, status }) => {
+      const response = await fetch(`${API_BASE}/user-add-contact/`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          contactId: contactId, // Include contactId in the body
+          status: status,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update contact status")
+      }
+
+      const data = await response.json()
+
+      if (data.status) {
+        return data.data
+      } else {
+        throw new Error(data.message || "Failed to update contact status")
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] })
+    },
+    onError: (error) => {
+      console.error("Error updating contact status:", error.message)
+    },
+  })
+}
+
+// Existing hooks remain unchanged
 export function useChats() {
   const { accessToken } = useAuth()
 
   return useQuery({
     queryKey: ["chats"],
     queryFn: async () => {
-      // This will be handled via WebSocket for now
-      // Return empty array until you implement chat list API
       return []
     },
     enabled: !!accessToken,
@@ -98,8 +172,6 @@ export function useChatMessages(chatId) {
   return useQuery({
     queryKey: ["messages", chatId],
     queryFn: async () => {
-      // This will be handled via WebSocket for now
-      // Return empty array until you implement messages API
       return []
     },
     enabled: !!accessToken && !!chatId,
@@ -112,8 +184,6 @@ export function useCreateChat() {
 
   return useMutation({
     mutationFn: async (chatData) => {
-      // This will be handled via WebSocket for now
-      // Mock response until you implement create chat API
       return {
         id: Date.now(),
         name: chatData.name || "New Chat",
@@ -134,8 +204,6 @@ export function useSendMessage() {
 
   return useMutation({
     mutationFn: async ({ chatId, content, messageType = "text" }) => {
-      // This will be handled via WebSocket for now
-      // Mock response until you implement send message API
       return {
         id: Date.now(),
         content,
@@ -155,7 +223,6 @@ export function useMarkMessageRead() {
 
   return useMutation({
     mutationFn: async (messageId) => {
-      // This will be handled via WebSocket for now
       return { success: true }
     },
   })

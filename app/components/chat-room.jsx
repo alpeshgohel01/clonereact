@@ -9,23 +9,22 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, ArrowLeft, Phone, Video, MoreVertical, Paperclip, Smile, XCircle } from "lucide-react" // Added XCircle
+import { Send, ArrowLeft, Phone, Video, MoreVertical, Paperclip, Smile, XCircle } from "lucide-react"
 import MessageBubble from "./message-bubble"
 import TypingIndicator from "./typing-indicator"
 
 export default function ChatRoom({ onBack }) {
   const { user } = useAuth()
   const { activeChat, messages, typingUsers, setMessages } = useChat()
-  const { sendChatMessage, sendTyping, sendStopTyping, connectionStatus } = useWebSocket()
+  const { sendChatMessage, sendTyping, sendStopTyping, chatConnectionStatus, markMessageAsRead } = useWebSocket() // Added markMessageAsRead
   const [newMessage, setNewMessage] = useState("")
   const [loading, setLoading] = useState(false)
-  const [selectedImage, setSelectedImage] = useState(null) // State for selected image file
-  const [imagePreview, setImagePreview] = useState(null) // State for image preview URL
+  const [selectedImage, setSelectedImage] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
   const messagesEndRef = useRef(null)
   const typingTimeoutRef = useRef(null)
-  const fileInputRef = useRef(null) // Ref for hidden file input
+  const fileInputRef = useRef(null)
 
-  // Get messages from React Query
   const { data: fetchedMessages = [], isLoading: messagesLoading } = useChatMessages(activeChat?.id)
 
   useEffect(() => {
@@ -45,7 +44,7 @@ export default function ChatRoom({ onBack }) {
 
   const sendMessage = async (e) => {
     e.preventDefault()
-    if ((!newMessage.trim() && !selectedImage) || loading || connectionStatus !== "connected") return
+    if ((!newMessage.trim() && !selectedImage) || loading || chatConnectionStatus !== "connected") return
 
     setLoading(true)
     const messageText = newMessage
@@ -57,23 +56,14 @@ export default function ChatRoom({ onBack }) {
 
     let success = false
     if (imageToSend) {
-      // Simulate image upload to a backend and get a URL
-      // In a real application, you would send `imageToSend` to your Django backend
-      // and receive the actual URL of the uploaded image.
-      // For now, we'll use a mock URL.
       console.log("Simulating image upload for:", imageToSend.name)
-      const mockImageUrl = `/placeholder.svg?text=Image+${imageToSend.name}` // Mock URL
-      // Example: const formData = new FormData(); formData.append('file', imageToSend);
-      // const uploadResponse = await fetch('/api/upload-image', { method: 'POST', body: formData });
-      // const imageUrl = (await uploadResponse.json()).url;
-
+      const mockImageUrl = `/placeholder.svg?text=Image+${imageToSend.name}`
       success = sendChatMessage(messageText, "image", mockImageUrl, imageToSend.name)
     } else {
       success = sendChatMessage(messageText, "text")
     }
 
     if (!success) {
-      // If WebSocket fails, restore message and image
       setNewMessage(messageText)
       setSelectedImage(imageToSend)
       if (imageToSend) setImagePreview(URL.createObjectURL(imageToSend))
@@ -83,7 +73,7 @@ export default function ChatRoom({ onBack }) {
   }
 
   const handleTyping = () => {
-    if (connectionStatus === "connected") {
+    if (chatConnectionStatus === "connected") {
       sendTyping()
     }
 
@@ -92,7 +82,7 @@ export default function ChatRoom({ onBack }) {
     }
 
     typingTimeoutRef.current = setTimeout(() => {
-      if (connectionStatus === "connected") {
+      if (chatConnectionStatus === "connected") {
         sendStopTyping()
       }
     }, 1000)
@@ -103,7 +93,7 @@ export default function ChatRoom({ onBack }) {
     if (file && file.type.startsWith("image/")) {
       setSelectedImage(file)
       setImagePreview(URL.createObjectURL(file))
-      setNewMessage(file.name) // Pre-fill message input with file name
+      setNewMessage(file.name)
     } else {
       setSelectedImage(null)
       setImagePreview(null)
@@ -114,9 +104,9 @@ export default function ChatRoom({ onBack }) {
   const removeImagePreview = () => {
     setSelectedImage(null)
     setImagePreview(null)
-    setNewMessage("") // Clear message input if it was pre-filled with file name
+    setNewMessage("")
     if (fileInputRef.current) {
-      fileInputRef.current.value = "" // Clear the file input
+      fileInputRef.current.value = ""
     }
   }
 
@@ -183,7 +173,7 @@ export default function ChatRoom({ onBack }) {
               <h3 className="font-semibold">{getChatName()}</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {getOnlineStatus()}
-                {connectionStatus !== "connected" && <span className="text-red-500 ml-2">• Offline</span>}
+                {chatConnectionStatus !== "connected" && <span className="text-red-500 ml-2">• Offline</span>}
               </p>
             </div>
           </div>
@@ -211,6 +201,7 @@ export default function ChatRoom({ onBack }) {
               message={message}
               isOwn={message.sender?.id === user?.id}
               showAvatar={index === 0 || currentMessages[index - 1]?.sender?.id !== message.sender?.id}
+              onRead={() => markMessageAsRead(message.id)} // Pass the markMessageAsRead function
             />
           ))}
 
@@ -254,9 +245,9 @@ export default function ChatRoom({ onBack }) {
                 setNewMessage(e.target.value)
                 handleTyping()
               }}
-              placeholder={connectionStatus === "connected" ? "Type a message..." : "Reconnecting..."}
+              placeholder={chatConnectionStatus === "connected" ? "Type a message..." : "Reconnecting..."}
               className="pr-10 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-gray-50"
-              disabled={loading || connectionStatus !== "connected"}
+              disabled={loading || chatConnectionStatus !== "connected"}
             />
             <Button
               type="button"
@@ -270,7 +261,7 @@ export default function ChatRoom({ onBack }) {
 
           <Button
             type="submit"
-            disabled={loading || (!newMessage.trim() && !selectedImage) || connectionStatus !== "connected"}
+            disabled={loading || (!newMessage.trim() && !selectedImage) || chatConnectionStatus !== "connected"}
             className="bg-emerald-500 hover:bg-emerald-600 text-white"
           >
             <Send className="h-4 w-4" />

@@ -88,7 +88,9 @@ export function ChatProvider({ children }) {
   }
 
   const setMessages = (chatId, messages) => {
-    dispatch({ type: "SET_MESSAGES", payload: { chatId, messages } })
+    // Sort messages by timestamp to ensure proper order
+    const sortedMessages = messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+    dispatch({ type: "SET_MESSAGES", payload: { chatId, messages: sortedMessages } })
   }
 
   const addMessage = (chatId, message) => {
