@@ -3,7 +3,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useAuth } from "../contexts/auth-context"
 
-const API_BASE = `http://192.168.17.136:8000`
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL
+
 
 export function useUsers() {
   const { accessToken, user } = useAuth()

@@ -473,6 +473,10 @@ export function WebSocketProvider({ children }) {
   const notificationReconnectTimeoutRef = useRef(null)
   const notificationReconnectAttemptsRef = useRef(0)
 
+  // Replace all hardcoded URLs with these:
+// const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_BASE_URL;
+
   // --- Chat WebSocket Connection Logic ---
   const connectChatWebSocket = useCallback(
     (chatId) => {
@@ -482,7 +486,7 @@ export function WebSocketProvider({ children }) {
       }
 
       try {
-        const wsUrl = `ws://192.168.17.136:8000/ws/chat/${chatId}/?token=${accessToken}`
+        const wsUrl = `${WS_BASE_URL}/ws/chat/${chatId}/?token=${accessToken}`
         console.log(`Connecting to Chat WebSocket: ${wsUrl}`)
         wsChatRef.current = new WebSocket(wsUrl)
 
@@ -566,7 +570,7 @@ export function WebSocketProvider({ children }) {
     }
 
     try {
-      const wsUrl = `ws://192.168.17.136:8000/ws/message_status/?token=${accessToken}`
+      const wsUrl = `${WS_BASE_URL}/ws/message_status/?token=${accessToken}`
       console.log(`Connecting to Status WebSocket: ${wsUrl}`)
       wsStatusRef.current = new WebSocket(wsUrl)
 
@@ -640,7 +644,7 @@ export function WebSocketProvider({ children }) {
     }
 
     try {
-      const wsUrl = `ws://192.168.17.136:8000/ws/notifications/?token=${accessToken}`
+      const wsUrl = `${WS_BASE_URL}/ws/notifications/?token=${accessToken}`
       console.log(`Connecting to Notification WebSocket: ${wsUrl}`)
       wsNotificationRef.current = new WebSocket(wsUrl)
 
