@@ -66,6 +66,7 @@ export default function CreateChatModal({ onClose, onCreateChat }) {
         avatar: isGroup ? null : selectedUsers[0].profile_pic,
         messages: [],
         created_at: newChat.created_at,
+        unread_count: 0, // New chats start with 0 unread
       }
 
       addChat(chatObject)
@@ -173,7 +174,7 @@ export default function CreateChatModal({ onClose, onCreateChat }) {
                       <p className="text-sm font-medium">{userItem.name}</p>
                       <p className="text-xs text-gray-500">{userItem.mobile}</p>
                     </div>
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    {/* Removed the online status indicator */}
                   </div>
                 ))}
 

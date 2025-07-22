@@ -5,7 +5,6 @@ import { useAuth } from "../contexts/auth-context"
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL
 
-
 export function useUsers() {
   const { accessToken, user } = useAuth()
 
@@ -30,7 +29,7 @@ export function useUsers() {
       const data = await response.json()
 
       if (data.status) {
-        return data.data
+        return data.contacts
       } else {
         throw new Error(data.message || "Failed to fetch users")
       }
@@ -64,7 +63,7 @@ export function useOnlineUsers() {
       const data = await response.json()
 
       if (data.status) {
-        return data.data.filter((user) => user.is_online !== false)
+        return data.contacts.filter((user) => user.is_online !== false)
       } else {
         throw new Error(data.message || "Failed to fetch online users")
       }
@@ -154,16 +153,72 @@ export function useUpdateContactStatus() {
   })
 }
 
-// Existing hooks remain unchanged
 export function useChats() {
-  const { accessToken } = useAuth()
+  const { accessToken, user } = useAuth()
 
   return useQuery({
     queryKey: ["chats"],
     queryFn: async () => {
-      return []
+      if (!user?.id) {
+        console.warn("User ID is not available for fetching chats.")
+        return []
+      }
+      try {
+        // Simulate fetching chats from a backend endpoint
+        const response = await fetch(`${API_BASE}/user-chat-list/`, {
+          method: "POST", // Assuming POST based on other queries
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            userId: user.id, // Assuming backend expects userId
+          }),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: "Unknown error" }))
+          console.error(`Failed to fetch chats: HTTP Status ${response.status}`, errorData)
+          throw new Error(errorData.message || `Failed to fetch chats: HTTP Status ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        if (data.status) {
+          // Assuming data.data is an array of chat objects with full details
+          // Example structure for a chat object:
+          // {
+          //   id: "chet_currentuser_8401019172_with_9978487625",
+          //   name: "Sagar",
+          //   participants: [
+          //     { id: "user1_id", name: "Alpesh Gohel", mobile: "8401019172", profile_pic: "/placeholder.svg?text=AG", is_online: true },
+          //     { id: "user2_id", name: "Sagar", mobile: "9978487625", profile_pic: "/placeholder.svg?text=S", is_online: true },
+          //   ],
+          //   is_group: false,
+          //   avatar: "/placeholder.svg?text=S",
+          //   last_message: {
+          //     id: 176,
+          //     chat_id: "chet_currentuser_8401019172_with_9978487625",
+          //     content: "hjjffjf",
+          //     timestamp: "2025-07-18T19:34:58.307989+00:00",
+          //     sender: { id: "user2_id", name: "Sagar", profile_pic: "/placeholder.svg?text=S" },
+          //   },
+          //   updated_at: "2025-07-18T19:34:58.307989+00:00",
+          //   unread_count: 0,
+          // }
+          return data.data
+        } else {
+          console.error("Backend reported error fetching chats:", data.message)
+          throw new Error(data.message || "Failed to fetch chats")
+        }
+      } catch (error) {
+        console.error("Error fetching chats:", error)
+        // Return an empty array or re-throw based on desired error handling
+        throw error
+      }
     },
-    enabled: !!accessToken,
+    enabled: !!accessToken && !!user?.id,
+    refetchInterval: 15000, // Refetch chats periodically to get updates
   })
 }
 
@@ -173,6 +228,8 @@ export function useChatMessages(chatId) {
   return useQuery({
     queryKey: ["messages", chatId],
     queryFn: async () => {
+      // This should fetch messages for the given chatId from your backend
+      // For now, returning an empty array as per previous implementation
       return []
     },
     enabled: !!accessToken && !!chatId,
@@ -185,6 +242,8 @@ export function useCreateChat() {
 
   return useMutation({
     mutationFn: async (chatData) => {
+      // This should ideally call your backend to create a chat
+      // For now, it's a mock creation
       return {
         id: Date.now(),
         name: chatData.name || "New Chat",
@@ -194,7 +253,7 @@ export function useCreateChat() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["chats"] })
+      queryClient.invalidateQueries({ queryKey: ["chats"] }) // Invalidate chats to re-fetch the new chat
     },
   })
 }
@@ -205,6 +264,7 @@ export function useSendMessage() {
 
   return useMutation({
     mutationFn: async ({ chatId, content, messageType = "text" }) => {
+      // This should ideally send the message to your backend
       return {
         id: Date.now(),
         content,
@@ -214,7 +274,7 @@ export function useSendMessage() {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["messages", variables.chatId] })
-      queryClient.invalidateQueries({ queryKey: ["chats"] })
+      queryClient.invalidateQueries({ queryKey: ["chats"] }) // Invalidate chats to update last message
     },
   })
 }
@@ -224,6 +284,7 @@ export function useMarkMessageRead() {
 
   return useMutation({
     mutationFn: async (messageId) => {
+      // This should ideally mark the message as read on your backend
       return { success: true }
     },
   })

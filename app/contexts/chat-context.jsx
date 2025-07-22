@@ -10,40 +10,77 @@ const chatReducer = (state, action) => {
       return { ...state, activeChat: action.payload }
     case "SET_CHATS":
       return { ...state, chats: action.payload }
-    case "ADD_CHAT":
-      return { ...state, chats: [action.payload, ...state.chats] }
+   case "ADD_CHAT": {
+  const exists = state.chats.some((chat) => chat.id === action.payload.id)
+  if (exists) return state // Don't add again
+  return { ...state, chats: [action.payload, ...state.chats] }
+}
+
     case "UPDATE_CHAT":
       return {
         ...state,
         chats: state.chats.map((chat) => (chat.id === action.payload.id ? { ...chat, ...action.payload } : chat)),
       }
     case "SET_MESSAGES":
+      // Sort messages by timestamp to ensure proper order
+      const sortedMessages = action.payload.messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
       return {
         ...state,
         messages: {
           ...state.messages,
-          [action.payload.chatId]: action.payload.messages,
+          [action.payload.chatId]: sortedMessages,
         },
       }
     case "ADD_MESSAGE":
       const { chatId, message } = action.payload
+      const updatedMessages = {
+        ...state.messages,
+        [chatId]: [...(state.messages[chatId] || []), message],
+      }
+
+      // Update chat's last message
+      const updatedChatsForMessage = state.chats.map((chat) => {
+        if (chat.id === chatId) {
+          return {
+            ...chat,
+            last_message: message,
+            updated_at: message.timestamp,
+          }
+        }
+        return chat
+      })
+
       return {
         ...state,
-        messages: {
-          ...state.messages,
-          [chatId]: [...(state.messages[chatId] || []), message],
-        },
+        messages: updatedMessages,
+        chats: updatedChatsForMessage,
       }
     case "UPDATE_MESSAGE":
+      const updatedMessagesForUpdate = {
+        ...state.messages,
+        [action.payload.chatId]:
+          state.messages[action.payload.chatId]?.map((msg) =>
+            msg.id === action.payload.message.id ? { ...msg, ...action.payload.message } : msg,
+          ) || [],
+      }
+
+      // Also update the chat's last message if the updated message is the last one
+      const updatedChatsForUpdate = state.chats.map((chat) => {
+        if (chat.id === action.payload.chatId) {
+          const lastMessage = updatedMessagesForUpdate[action.payload.chatId]?.slice(-1)[0]
+          if (lastMessage && lastMessage.id === action.payload.message.id) {
+            return {
+              ...chat,
+              last_message: lastMessage,
+            }
+          }
+        }
+        return chat
+      })
       return {
         ...state,
-        messages: {
-          ...state.messages,
-          [action.payload.chatId]:
-            state.messages[action.payload.chatId]?.map((msg) =>
-              msg.id === action.payload.message.id ? { ...msg, ...action.payload.message } : msg,
-            ) || [],
-        },
+        messages: updatedMessagesForUpdate,
+        chats: updatedChatsForUpdate,
       }
     case "SET_TYPING_USERS":
       return {
@@ -55,6 +92,30 @@ const chatReducer = (state, action) => {
       }
     case "SET_ONLINE_USERS":
       return { ...state, onlineUsers: action.payload }
+    case "INCREMENT_UNREAD_COUNT":
+      return {
+        ...state,
+        unreadCounts: {
+          ...state.unreadCounts,
+          [action.payload.chatId]: (state.unreadCounts[action.payload.chatId] || 0) + 1,
+        },
+      }
+    case "RESET_UNREAD_COUNT":
+      return {
+        ...state,
+        unreadCounts: {
+          ...state.unreadCounts,
+          [action.payload.chatId]: 0,
+        },
+      }
+    case "SET_UNREAD_COUNT": // For initial load or backend sync
+      return {
+        ...state,
+        unreadCounts: {
+          ...state.unreadCounts,
+          [action.payload.chatId]: action.payload.count,
+        },
+      }
     default:
       return state
   }
@@ -66,6 +127,7 @@ const initialState = {
   messages: {}, // { chatId: [messages] }
   typingUsers: {}, // { chatId: [usernames] }
   onlineUsers: [],
+  unreadCounts: {}, // { chatId: count }
 }
 
 export function ChatProvider({ children }) {
@@ -88,20 +150,13 @@ export function ChatProvider({ children }) {
   }
 
   const setMessages = (chatId, messages) => {
-    // Sort messages by timestamp to ensure proper order
-    const sortedMessages = messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
-    dispatch({ type: "SET_MESSAGES", payload: { chatId, messages: sortedMessages } })
+    dispatch({ type: "SET_MESSAGES", payload: { chatId, messages } })
   }
 
   const addMessage = (chatId, message) => {
     dispatch({ type: "ADD_MESSAGE", payload: { chatId, message } })
 
-    // Update chat's last message
-    updateChat({
-      id: chatId,
-      last_message: message,
-      updated_at: message.timestamp,
-    })
+    // Update chat's last message is handled in the reducer now
   }
 
   const updateMessage = (chatId, message) => {
@@ -116,6 +171,18 @@ export function ChatProvider({ children }) {
     dispatch({ type: "SET_ONLINE_USERS", payload: users })
   }
 
+  const incrementUnreadCount = (chatId) => {
+    dispatch({ type: "INCREMENT_UNREAD_COUNT", payload: { chatId } })
+  }
+
+  const resetUnreadCount = (chatId) => {
+    dispatch({ type: "RESET_UNREAD_COUNT", payload: { chatId } })
+  }
+
+  const setUnreadCount = (chatId, count) => {
+    dispatch({ type: "SET_UNREAD_COUNT", payload: { chatId, count } })
+  }
+
   const value = {
     ...state,
     setActiveChat,
@@ -127,6 +194,9 @@ export function ChatProvider({ children }) {
     updateMessage,
     setTypingUsers,
     setOnlineUsers,
+    incrementUnreadCount,
+    resetUnreadCount,
+    setUnreadCount,
   }
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>
